@@ -54,9 +54,20 @@ def receive():
 def handle(client):
     while True:
         try:
-            msg = client.recv(1024)
-            print(f'{nicknames[clients.index(client)]} says {msg}')
-            broadcast(msg)
+            message = msg = client.recv(1024)
+            if message.decode('utf-8').startswith("b'KICK"):
+                nameToKick = message.decode('utf-8')[7:]
+                kickUser(nameToKick)
+            elif message.decode('utf-8').startswith('BAN'):
+                nameToBan = message.decode('utf-8')[4:]
+                kickUser(nameToBan)
+                with open('bans.txt', 'a') as f:
+                    f.write(f'{nameToBan}\n')
+                print(f'{nameToBan} was banned!')
+
+            else:
+                print(f'{nicknames[clients.index(client)]} says {msg}')
+                broadcast(msg)
 
         except:
             index = clients.index(client)
@@ -67,6 +78,17 @@ def handle(client):
             nicknames.remove(nickname)
             break
 
+def kickUser(name):
+    if name in nicknames:
+        broadcast(f'{name} has been kicked!'.encode('utf-8'))
+        nameIndex = nicknames.index(name)
+        clientToKick = clients[nameIndex]
+        clients.remove(clientToKick)
+        clientToKick.close()
+        nicknames.remove(name)
+
+def banUser():
+    pass
 
 print('server running...')
 receive()

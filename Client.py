@@ -18,11 +18,10 @@ class Client:
         msg.withdraw()
 
         self.nickname = simpledialog.askstring('Nickname', 'Please choose a nickname', parent=msg)
-#delete
+
         if self.nickname == "ADMIN":
-            self.password = input('enter passsword:')
+            self.password = simpledialog.askstring('Password', 'Please enter admin password', parent=msg)
             
-#delete
         self.guiDone = False
         self.running = True
 
@@ -63,13 +62,21 @@ class Client:
     
     def write(self):
         message = f'{self.nickname}: {self.inputArea.get("0.1","end")}'
-#delete
-       
-       
-       
-#delete
-        self.sock.send(message.encode('utf-8'))
-        self.inputArea.delete('0.1', 'end')
+
+        if message[len(self.nickname)+2].startswith('/'):
+
+            if self.nickname == 'ADMIN':
+                if message[7:].startswith('/kick'):
+                    self.sock.send(f'KICK {message[13:]}'.encode('utf-8'))
+                    self.inputArea.delete('0.1', 'end')
+                if message[len(self.nickname)+2].startswith('/ban'):
+                    self.sock.send(f'BAN {message[len(self.nickname)+2+5]}'.encode('utf-8'))
+                    self.inputArea.delete('0.1', 'end')
+            else:
+                print('Commands can only be executred by an admin')
+        else:
+            self.sock.send(message.encode('utf-8'))
+            self.inputArea.delete('0.1', 'end')
     
     def stop(self):
         self.running = False
@@ -83,14 +90,14 @@ class Client:
                 message = self.sock.recv(1024).decode('utf-8')
                 if message == 'NICK':
                     self.sock.send(self.nickname.encode('utf-8'))
-#delete
+
                     self.nextMessage = self.sock.recv(1024).decode('utf-8')
                     if self.nextMessage == 'PASS':
                         self.sock.send(self.password.encode('utf-8'))
                         if self.sock.recv(1024).decode('utf-8') == 'REFUSE':
                             print('connection was refused')
                             self.stop()
-#delete
+
                 else:
                     if self.guiDone:
                         self.textArea.config(state='normal')
