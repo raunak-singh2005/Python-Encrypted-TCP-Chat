@@ -28,7 +28,16 @@ def receive():
 
         client.send('NICK'.encode('utf-8'))
         nickname = client.recv(1024).decode('utf-8')
-        
+#delete
+        if nickname == 'ADMIN':
+            client.send('PASS'.encode('utf-8'))
+            password = client.recv(1024).decode('utf-8')
+            
+            if password != 'adminPass':
+                client.send('REFUSE'.encode('utf-8'))
+                client.close()
+                continue
+#delete
         nicknames.append(nickname)
         clients.append(client)
 

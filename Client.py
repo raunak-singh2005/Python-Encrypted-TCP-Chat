@@ -18,7 +18,11 @@ class Client:
         msg.withdraw()
 
         self.nickname = simpledialog.askstring('Nickname', 'Please choose a nickname', parent=msg)
-        
+#delete
+        if self.nickname == "ADMIN":
+            self.password = input('enter passsword:')
+            
+#delete
         self.guiDone = False
         self.running = True
 
@@ -59,7 +63,11 @@ class Client:
     
     def write(self):
         message = f'{self.nickname}: {self.inputArea.get("0.1","end")}'
-
+#delete
+       
+       
+       
+#delete
         self.sock.send(message.encode('utf-8'))
         self.inputArea.delete('0.1', 'end')
     
@@ -75,6 +83,14 @@ class Client:
                 message = self.sock.recv(1024).decode('utf-8')
                 if message == 'NICK':
                     self.sock.send(self.nickname.encode('utf-8'))
+#delete
+                    self.nextMessage = self.sock.recv(1024).decode('utf-8')
+                    if self.nextMessage == 'PASS':
+                        self.sock.send(self.password.encode('utf-8'))
+                        if self.sock.recv(1024).decode('utf-8') == 'REFUSE':
+                            print('connection was refused')
+                            self.stop()
+#delete
                 else:
                     if self.guiDone:
                         self.textArea.config(state='normal')
