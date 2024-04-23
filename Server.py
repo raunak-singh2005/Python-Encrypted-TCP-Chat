@@ -11,15 +11,12 @@ server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind((HOST, PORT))
 server.listen()
 
-clients = []
-nicknames = []
-clientPubkey = []
-
+clients_data = []
 
 def broadcast(msg):
-    for client in clients:
+    for data_row in clients_data:
         try:
-            client.send(rsa.encrypt(msg.encode('utf-8'), clientPubkey[clients.index(client)]))
+            data_row[0].send(rsa.encrypt(msg.encode('utf-8'), data_row[2]))
         except Exception as e:
             print(e)
 
@@ -27,24 +24,23 @@ def broadcast(msg):
 def receive():
     while True:
         client, addr = server.accept()
-        clients.append(client)
         print(f'connected with {str(addr)}!')
 
         client.send(pubkey.save_pkcs1("PEM"))
-        clientPubkey.append(rsa.PublicKey.load_pkcs1(client.recv(1024)))
+        client_public_key = rsa.PublicKey.load_pkcs1(client.recv(1024))
 
-        client.send(rsa.encrypt('NICK'.encode('utf-8'), clientPubkey[clients.index(client)]))
+        client.send(rsa.encrypt('NICK'.encode('utf-8'), client_public_key))
 
         try:
             nickname = rsa.decrypt(client.recv(1024), privkey).decode('utf-8')
         except:
             continue
 
-        nicknames.append(nickname)
+        clients_data.append([client, nickname, client_public_key])
 
         print(f'Nickname of the client is {nickname}')
         broadcast(f'{nickname} has connected to the server \n')
-        client.send(rsa.encrypt("Connected to the server\n".encode('utf-8'), clientPubkey[clients.index(client)]))
+        client.send(rsa.encrypt("Connected to the server\n".encode('utf-8'), client_public_key))
 
         thread = threading.Thread(target=handle, args=(client,))
         thread.start()
@@ -57,13 +53,10 @@ def handle(client):
             print(decMessage)
             broadcast(decMessage)
         except:
-            index = clients.index(client)
-            clients.remove(client)
+            client_data_row = next(row for row in clients_data if row[0] == client)
+            clients_data.remove(client_data_row)
             client.close()
-            nickname = nicknames[index]
-            broadcast(f'{nickname} disconnected from the server!')
-            nicknames.remove(nickname)
-            clientPubkey.remove(clientPubkey[index])
+            broadcast(f'{client_data_row[1]} disconnected from the server!')
             break
 
 
