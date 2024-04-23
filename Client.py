@@ -1,30 +1,33 @@
+#! /usr/bin/python3
 import socket
 import threading
 import tkinter
 import tkinter.scrolledtext
 from tkinter import simpledialog
+import rsa
 
 HOST = '192.168.0.75'
-PORT = 9090
-
+PORT = 9091
 
 class Client:
 
     def __init__(self, host, port):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect((host, port))
-
+        
         msg = tkinter.Tk()
         msg.withdraw()
 
         self.nickname = simpledialog.askstring('Nickname', 'Please choose a nickname', parent=msg)
-
-        if self.nickname == "ADMIN":
-            self.password = simpledialog.askstring('Password', 'Please enter admin password', parent=msg)
-            
+        
         self.guiDone = False
         self.running = True
+        self.pubkey, self.privkey = rsa.newkeys(1024)
+        self.serverPubkey = None
 
+        self.serverPubkey = rsa.PublicKey.load_pkcs1(self.sock.recv(1024))
+        self.sock.send(self.pubkey.save_pkcs1("PEM"))
+        
         guiThread = threading.Thread(target=self.guiLoop)
         receiveThread = threading.Thread(target=self.receive)
 
@@ -61,22 +64,10 @@ class Client:
         self.win.mainloop()
     
     def write(self):
-        message = f'{self.nickname}: {self.inputArea.get("0.1","end")}'
+        message = f'{self.nickname}: {self.inputArea.get("0.1","end")}'.encode("utf-8")
 
-        if message[len(self.nickname)+2].startswith('/'):
-
-            if self.nickname == 'ADMIN':
-                if message[7:].startswith('/kick'):
-                    self.sock.send(f'KICK {message[13:]}'.encode('utf-8'))
-                    self.inputArea.delete('0.1', 'end')
-                if message[len(self.nickname)+2].startswith('/ban'):
-                    self.sock.send(f'BAN {message[len(self.nickname)+2+5]}'.encode('utf-8'))
-                    self.inputArea.delete('0.1', 'end')
-            else:
-                print('Commands can only be executred by an admin')
-        else:
-            self.sock.send(message.encode('utf-8'))
-            self.inputArea.delete('0.1', 'end')
+        self.sock.send(rsa.encrypt(message, self.serverPubkey))
+        self.inputArea.delete('0.1', 'end')
     
     def stop(self):
         self.running = False
@@ -87,17 +78,11 @@ class Client:
     def receive(self):
         while self.running:
             try:
-                message = self.sock.recv(1024).decode('utf-8')
-                if message == 'NICK':
-                    self.sock.send(self.nickname.encode('utf-8'))
-
-                    self.nextMessage = self.sock.recv(1024).decode('utf-8')
-                    if self.nextMessage == 'PASS':
-                        self.sock.send(self.password.encode('utf-8'))
-                        if self.sock.recv(1024).decode('utf-8') == 'REFUSE':
-                            print('connection was refused')
-                            self.stop()
-
+                message = rsa.decrypt(self.sock.recv(1024), self.privkey).decode("utf-8")
+                if message == "FULL":
+                    self.stop()
+                elif message == 'NICK':
+                    self.sock.send(rsa.encrypt(self.nickname.encode('utf-8'), self.serverPubkey))
                 else:
                     if self.guiDone:
                         self.textArea.config(state='normal')
@@ -110,5 +95,6 @@ class Client:
                 print('error')
                 self.sock.close()
                 break
+
 
 client = Client(HOST, PORT)
