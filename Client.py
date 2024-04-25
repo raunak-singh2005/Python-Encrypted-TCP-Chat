@@ -7,7 +7,7 @@ from tkinter import simpledialog
 import rsa
 
 HOST = '192.168.0.75'
-PORT = 9091
+PORT = 9090
 
 class Client:
 
@@ -20,6 +20,9 @@ class Client:
 
         self.nickname = simpledialog.askstring('Nickname', 'Please choose a nickname', parent=msg)
         
+        if self.nickname == 'ADMIN':
+            self.password = simpledialog.askstring('Password', 'Please enter the admin password', parent=msg)
+
         self.guiDone = False
         self.running = True
         self.pubkey, self.privkey = rsa.newkeys(1024)
@@ -64,11 +67,24 @@ class Client:
         self.win.mainloop()
     
     def write(self):
-        message = f'{self.nickname}: {self.inputArea.get("0.1","end")}'.encode("utf-8")
+        msg = f'{self.nickname}: {self.inputArea.get("0.1","end")}'
+        message = msg.rstrip('\n')
+        if message[len(self.nickname)+2:].startswith('/'):
+            if self.nickname == 'ADMIN':
+                if message[len(self.nickname)+2:].startswith('/kick'):
+                    self.sock.send(rsa.encrypt(f'KICK {message[len(self.nickname)+8:]}'.encode('utf-8'), self.serverPubkey))
 
-        self.sock.send(rsa.encrypt(message, self.serverPubkey))
-        self.inputArea.delete('0.1', 'end')
-    
+                elif message[len(self.nickname)+2:].startswith('/ban'):
+                    self.sock.send(rsa.encrypt(f'BAN {message[len(self.nickname)+7:]}'.encode('utf-8'), self.serverPubkey))
+                else:
+                    self.sock.send(rsa.encrypt(message.encode('utf-8'), self.serverPubkey))
+                    self.inputArea.delete('0.1', 'end')
+            else:
+                print('Not ADMIN')
+        else:
+            self.sock.send(rsa.encrypt(message.encode('utf-8'), self.serverPubkey))
+            self.inputArea.delete('0.1', 'end')
+
     def stop(self):
         self.running = False
         self.win.destroy()
@@ -78,11 +94,18 @@ class Client:
     def receive(self):
         while self.running:
             try:
-                message = rsa.decrypt(self.sock.recv(1024), self.privkey).decode("utf-8")
-                if message == "FULL":
-                    self.stop()
-                elif message == 'NICK':
+                message = rsa.decrypt(self.sock.recv(1024), self.privkey).decode('utf-8')
+                if message == 'NICK':
                     self.sock.send(rsa.encrypt(self.nickname.encode('utf-8'), self.serverPubkey))
+                    nextMessage = rsa.decrypt(self.sock.recv(1024), self.privkey).decode('utf-8')
+                    if nextMessage == "PASS":
+                        self.sock.send(rsa.encrypt(self.password.encode('utf-8'), self.serverPubkey))
+                        if rsa.decrypt(self.sock.recv(1024), self.privkey).decode == 'REFUSE':
+                            print('Connection refused!!')
+                            self.stop()
+                    elif nextMessage == 'BANNED':
+                        print('connection refused because of ban')
+                        self.stop()
                 else:
                     if self.guiDone:
                         self.textArea.config(state='normal')
