@@ -4,28 +4,37 @@ import threading
 import rsa
 import hashlib
 
+
+# Function to get the network information from the user
 def getNetworkInfo():
     HOST = input('Please Enter the Server IP Address: ')
     PORT = int(input('Please Enter the Server Port: '))
     return HOST, PORT
 
+
+# Assign the network information to the HOST and PORT variables
 HOST, PORT = getNetworkInfo()
 
+# Generate the public and private keys
 pubkey, privkey = rsa.newkeys(1024)
 
+# Create the server socket
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 server.bind((HOST, PORT))
 server.listen()
 
+# List to store the clients data
 clients_data = []
 
 
+# Function to hash the admin password
 def hashAdminPassword():
     plainPassword = input('Please Enter a Password: ')
     hashPassword = hashlib.sha256(plainPassword.encode('utf-8')).hexdigest()
     return hashPassword
 
 
+# Function to broadcast the message to all the clients
 def broadcast(msg):
     for data_row in clients_data:
         try:
@@ -34,6 +43,7 @@ def broadcast(msg):
             print(e)
 
 
+# Function to handle the incoming connections
 def receive():
     realPassword = hashAdminPassword()
     while True:
@@ -75,6 +85,7 @@ def receive():
         thread.start()
 
 
+# Function to handle the client messages
 def handle(client):
     while True:
         try:
@@ -110,6 +121,7 @@ def handle(client):
             break
 
 
+# Function to kick the user
 def kickUser(name):
     client_data_row = next((row for row in clients_data if row[1] == name), None)
     if client_data_row:
@@ -119,5 +131,6 @@ def kickUser(name):
         client_data_row[0].close()
 
 
+# Start the server
 print('server running...')
 receive()

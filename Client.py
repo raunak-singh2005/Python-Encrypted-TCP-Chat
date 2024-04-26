@@ -8,17 +8,21 @@ import rsa
 import hashlib
 
 
+# Function to get the network information from the user
 def getNetworkInfo():
     HOST = simpledialog.askstring('Server IP', 'Please Enter the Server IP Address: ')
     PORT = simpledialog.askinteger('Server Port', 'Please Enter the Server Port: ')
     return HOST, PORT
 
 
+# Assign the network information to the HOST and PORT variables
 HOST, PORT = getNetworkInfo()
 
 
+# A class to represent a client
 class Client:
 
+    # Constructor
     def __init__(self, host, port):
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.sock.connect((host, port))
@@ -45,6 +49,7 @@ class Client:
         guiThread.start()
         receiveThread.start()
 
+    #  Function to create the GUI
     def guiLoop(self):
         self.win = tkinter.Tk()
         self.win.configure(bg='lightgray')
@@ -74,6 +79,7 @@ class Client:
 
         self.win.mainloop()
 
+    # Function to send the message to the server
     def write(self):
         msg = f'{self.nickname}: {self.inputArea.get("0.1", "end")}'
         message = msg.rstrip('\n')
@@ -97,12 +103,14 @@ class Client:
             self.sock.send(rsa.encrypt(message.encode('utf-8'), self.serverPubkey))
             self.inputArea.delete('0.1', 'end')
 
+    # Function to stop the client
     def stop(self):
         self.running = False
         self.win.destroy()
         self.sock.close()
         exit(0)
 
+    # Function to receive and decrypt messages from the server
     def receive(self):
         while self.running:
             try:
@@ -133,4 +141,5 @@ class Client:
                 break
 
 
+# Create a client object
 client = Client(HOST, PORT)
