@@ -7,7 +7,7 @@ from tkinter import simpledialog
 import rsa
 
 HOST = '192.168.0.75'
-PORT = 9090
+PORT = 9093
 
 class Client:
 
@@ -73,9 +73,11 @@ class Client:
             if self.nickname == 'ADMIN':
                 if message[len(self.nickname)+2:].startswith('/kick'):
                     self.sock.send(rsa.encrypt(f'KICK {message[len(self.nickname)+8:]}'.encode('utf-8'), self.serverPubkey))
+                    self.inputArea.delete('0.1', 'end')
 
                 elif message[len(self.nickname)+2:].startswith('/ban'):
                     self.sock.send(rsa.encrypt(f'BAN {message[len(self.nickname)+7:]}'.encode('utf-8'), self.serverPubkey))
+                    self.inputArea.delete('0.1', 'end')
                 else:
                     self.sock.send(rsa.encrypt(message.encode('utf-8'), self.serverPubkey))
                     self.inputArea.delete('0.1', 'end')
@@ -103,13 +105,14 @@ class Client:
                         if rsa.decrypt(self.sock.recv(1024), self.privkey).decode == 'REFUSE':
                             print('Connection refused!!')
                             self.stop()
+
                     elif nextMessage == 'BANNED':
                         print('connection refused because of ban')
                         self.stop()
                 else:
                     if self.guiDone:
                         self.textArea.config(state='normal')
-                        self.textArea.insert('end', message)
+                        self.textArea.insert('end', f'{message}\n')
                         self.textArea.yview('end')
                         self.textArea.config(state='disabled')
             except ConnectionAbortedError:

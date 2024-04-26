@@ -4,7 +4,7 @@ import threading
 import rsa
 
 HOST = '192.168.0.75'
-PORT = 9090
+PORT = 9093
 pubkey, privkey = rsa.newkeys(1024)
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -64,42 +64,40 @@ def receive():
 
 
 def handle(client):
-    client_data_row = next(row for row in clients_data if row[0] == client)
-    clientPublicKey = client_data_row[2]
     while True:
         try:
             msg = decMessage = rsa.decrypt(client.recv(1024), privkey).decode("utf-8")
             print(decMessage)
 
-            if msg.startswith('KICK'):
-                if clients_data[clients_data.index(client_data_row)][1] == 'ADMIN':
-                    nameToKick = msg[5:]
+            if msg.startswith('KICK') or msg.startswith('BAN'):
+                client_data_row = next(row for row in clients_data if row[0] == client)
+                if clients_data[clients_data.index(client_data_row)][1] != 'ADMIN':
+                    client.send(rsa.encrypt('Command Refused'.encode('utf,8'), client_data_row[2]))
+                    continue
+
+                if msg.startswith('KICK'):
+                    nameToKick = msg[5:]#
                     kickUser(nameToKick)
-                else:
-                    client.send(rsa.encrypt('Command Refused'.encode('utf,8'), clientPublicKey))
 
-            elif msg.startswith('BAN'):
-
-                if clients_data[clients_data.index(client_data_row)][1] == 'ADMIN':
+                elif msg.startswith('BAN'):
                     nameToBan = msg[4:]
                     kickUser(nameToBan)
                     with open('bans.txt', 'a') as f:
                         f.write(f'{nameToBan}\n')
                     print(f'{nameToBan} was banned')
-                else:
-                    client.send(rsa.encrypt('Command Refused'.encode('utf,8'), clientPublicKey))
+
             else:
                 broadcast(decMessage)
+
         except:
-            client_data_row = next(row for row in clients_data if row[0] == client)
-            clients_data.remove(client_data_row)
-            client.close()
-            broadcast(f'{client_data_row[1]} disconnected from the server!')
+            client_data_row = next((row for row in clients_data if row[0] == client), None)
+            if client_data_row:
+                clients_data.remove(client_data_row)
+                client.close()
+                broadcast(f'{client_data_row[1]} disconnected from the server!')
             break
 
-
 def kickUser(name):
-    
     client_data_row = next((row for row in clients_data if row[1] == name), None)
     if client_data_row:
         broadcast(f'{name} was kicked!')
