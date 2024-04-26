@@ -5,9 +5,10 @@ import tkinter
 import tkinter.scrolledtext
 from tkinter import simpledialog
 import rsa
+import hashlib
 
 HOST = '192.168.0.75'
-PORT = 9093
+PORT = 9094
 
 class Client:
 
@@ -21,8 +22,8 @@ class Client:
         self.nickname = simpledialog.askstring('Nickname', 'Please choose a nickname', parent=msg)
         
         if self.nickname == 'ADMIN':
-            self.password = simpledialog.askstring('Password', 'Please enter the admin password', parent=msg)
-
+            self.plaintextPassword = simpledialog.askstring('Password', 'Please enter the admin password', parent=msg)
+            self.hashPassword = hashlib.sha256(self.plaintextPassword.encode('utf-8')).hexdigest()
         self.guiDone = False
         self.running = True
         self.pubkey, self.privkey = rsa.newkeys(1024)
@@ -92,7 +93,7 @@ class Client:
         self.win.destroy()
         self.sock.close()
         exit(0)
-    
+
     def receive(self):
         while self.running:
             try:
@@ -101,11 +102,11 @@ class Client:
                     self.sock.send(rsa.encrypt(self.nickname.encode('utf-8'), self.serverPubkey))
                     nextMessage = rsa.decrypt(self.sock.recv(1024), self.privkey).decode('utf-8')
                     if nextMessage == "PASS":
-                        self.sock.send(rsa.encrypt(self.password.encode('utf-8'), self.serverPubkey))
-                        if rsa.decrypt(self.sock.recv(1024), self.privkey).decode == 'REFUSE':
+                        self.sock.send(rsa.encrypt(self.hashPassword.encode('utf-8'), self.serverPubkey))
+                        nextMessage = rsa.decrypt(self.sock.recv(1024), self.privkey).decode('utf-8')  # Add this line
+                        if nextMessage == 'REFUSE':  # Check if the next message is 'REFUSE'
                             print('Connection refused!!')
                             self.stop()
-
                     elif nextMessage == 'BANNED':
                         print('connection refused because of ban')
                         self.stop()

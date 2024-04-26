@@ -2,9 +2,10 @@
 import socket
 import threading
 import rsa
+import hashlib
 
 HOST = '192.168.0.75'
-PORT = 9093
+PORT = 9094
 pubkey, privkey = rsa.newkeys(1024)
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -12,6 +13,12 @@ server.bind((HOST, PORT))
 server.listen()
 
 clients_data = []
+
+
+def hashAdminPassword():
+    plainPassword = input('Please Enter a Password: ')
+    hashPassword = hashlib.sha256(plainPassword.encode('utf-8')).hexdigest()
+    return hashPassword
 
 
 def broadcast(msg):
@@ -23,6 +30,7 @@ def broadcast(msg):
 
 
 def receive():
+    realPassword = hashAdminPassword()
     while True:
         client, addr = server.accept()
         print(f'connected with {str(addr)}!')
@@ -45,10 +53,9 @@ def receive():
 
         if nickname == "ADMIN":
             client.send(rsa.encrypt('PASS'.encode('utf-8'), client_public_key))
-            password = rsa.decrypt(client.recv(1024), privkey).decode('utf-8')
+            hashPassword = rsa.decrypt(client.recv(1024), privkey).decode('utf-8')
 
-            #change this to implement hashing
-            if password != "admin":
+            if hashPassword != realPassword:
                 client.send(rsa.encrypt('REFUSE'.encode('utf-8'), client_public_key))
                 client.close()
                 continue
@@ -70,13 +77,13 @@ def handle(client):
             print(decMessage)
 
             if msg.startswith('KICK') or msg.startswith('BAN'):
-                client_data_row = next(row for row in clients_data if row[0] == client)
-                if clients_data[clients_data.index(client_data_row)][1] != 'ADMIN':
-                    client.send(rsa.encrypt('Command Refused'.encode('utf,8'), client_data_row[2]))
+                clientDataRow = next(row for row in clients_data if row[0] == client)
+                if clients_data[clients_data.index(clientDataRow)][1] != 'ADMIN':
+                    client.send(rsa.encrypt('Command Refused'.encode('utf,8'), clientDataRow[2]))
                     continue
 
                 if msg.startswith('KICK'):
-                    nameToKick = msg[5:]#
+                    nameToKick = msg[5:]  #
                     kickUser(nameToKick)
 
                 elif msg.startswith('BAN'):
@@ -90,12 +97,13 @@ def handle(client):
                 broadcast(decMessage)
 
         except:
-            client_data_row = next((row for row in clients_data if row[0] == client), None)
-            if client_data_row:
-                clients_data.remove(client_data_row)
+            clientDataRow = next((row for row in clients_data if row[0] == client), None)
+            if clientDataRow:
+                clients_data.remove(clientDataRow)
                 client.close()
-                broadcast(f'{client_data_row[1]} disconnected from the server!')
+                broadcast(f'{clientDataRow[1]} disconnected from the server!')
             break
+
 
 def kickUser(name):
     client_data_row = next((row for row in clients_data if row[1] == name), None)
@@ -104,6 +112,7 @@ def kickUser(name):
         clients_data.remove(client_data_row)
         client_data_row[0].shutdown(socket.SHUT_RDWR)
         client_data_row[0].close()
+
 
 print('server running...')
 receive()
