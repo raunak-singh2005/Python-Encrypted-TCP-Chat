@@ -4,8 +4,13 @@ import threading
 import rsa
 import hashlib
 
-HOST = '192.168.0.75'
-PORT = 9094
+def getNetworkInfo():
+    HOST = input('Please Enter the Server IP Address: ')
+    PORT = int(input('Please Enter the Server Port: '))
+    return HOST, PORT
+
+HOST, PORT = getNetworkInfo()
+
 pubkey, privkey = rsa.newkeys(1024)
 
 server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
