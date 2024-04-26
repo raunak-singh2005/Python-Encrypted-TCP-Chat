@@ -3,13 +3,23 @@ import socket
 import threading
 import rsa
 import hashlib
+import sys
+import re
+import signal
 
 
 # Function to get the network information from the user
 def getNetworkInfo():
-    HOST = input('Please Enter the Server IP Address: ')
-    PORT = int(input('Please Enter the Server Port: '))
-    return HOST, PORT
+    while True:
+        HOST = input('Please Enter the Server IP Address: ')
+        PORT = input('Please Enter the Server Port: ')
+        if not re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', HOST):
+            print("Invalid IP address format. Please try again.")
+            continue
+        if not PORT.isdigit() or not 0 <= int(PORT) <= 65535:
+            print("Invalid port number. Please try again.")
+            continue
+        return HOST, int(PORT)
 
 
 # Assign the network information to the HOST and PORT variables
@@ -47,42 +57,56 @@ def broadcast(msg):
 def receive():
     realPassword = hashAdminPassword()
     while True:
-        client, addr = server.accept()
-        print(f'connected with {str(addr)}!')
-
-        client.send(pubkey.save_pkcs1("PEM"))
-        client_public_key = rsa.PublicKey.load_pkcs1(client.recv(1024))
-
-        client.send(rsa.encrypt('NICK'.encode('utf-8'), client_public_key))
-
         try:
-            nickname = rsa.decrypt(client.recv(1024), privkey).decode('utf-8')
-        except:
-            continue
+            client, addr = server.accept()
+            print(f'connected with {str(addr)}!')
 
-        with open('bans.txt', 'r') as f:
-            bans = f.readlines()
+            client.send(pubkey.save_pkcs1("PEM"))
+            client_public_key = rsa.PublicKey.load_pkcs1(client.recv(1024))
 
-        if nickname + '\n' in bans:
-            client.send(rsa.encrypt('BANNED'.encode('utf-8'), client_public_key))
+            client.send(rsa.encrypt('NICK'.encode('utf-8'), client_public_key))
 
-        if nickname == "ADMIN":
-            client.send(rsa.encrypt('PASS'.encode('utf-8'), client_public_key))
-            hashPassword = rsa.decrypt(client.recv(1024), privkey).decode('utf-8')
-
-            if hashPassword != realPassword:
-                client.send(rsa.encrypt('REFUSE'.encode('utf-8'), client_public_key))
-                client.close()
+            try:
+                nickname = rsa.decrypt(client.recv(1024), privkey).decode('utf-8')
+            except:
                 continue
 
-        clients_data.append([client, nickname, client_public_key])
+            with open('bans.txt', 'r') as f:
+                bans = f.readlines()
 
-        print(f'Nickname of the client is {nickname}')
-        broadcast(f'{nickname} has connected to the server \n')
-        client.send(rsa.encrypt("Connected to the server\n".encode('utf-8'), client_public_key))
+            if nickname + '\n' in bans:
+                client.send(rsa.encrypt('BANNED'.encode('utf-8'), client_public_key))
 
-        thread = threading.Thread(target=handle, args=(client,))
-        thread.start()
+            if nickname == "ADMIN":
+                client.send(rsa.encrypt('PASS'.encode('utf-8'), client_public_key))
+                hashPassword = rsa.decrypt(client.recv(1024), privkey).decode('utf-8')
+
+                if hashPassword != realPassword:
+                    client.send(rsa.encrypt('REFUSE'.encode('utf-8'), client_public_key))
+                    client.close()
+                    continue
+
+            clients_data.append([client, nickname, client_public_key])
+
+            print(f'Nickname of the client is {nickname}')
+            broadcast(f'{nickname} has connected to the server \n')
+            client.send(rsa.encrypt("Connected to the server\n".encode('utf-8'), client_public_key))
+
+            thread = threading.Thread(target=handle, args=(client,))
+            thread.start()
+        except rsa.DecryptionError:
+            print('Decryption Error')
+        except socket.error as e:
+            print(f'Socket Error : {e}')
+        except Exception as e:
+            print(f'Error in receiving the connection: {e}')
+
+
+# Function to handle the interrupt signal
+def signal_handler(sig, frame):
+    print("Shutting down server...")
+    server.close()
+    sys.exit(0)
 
 
 # Function to handle the client messages
@@ -130,6 +154,9 @@ def kickUser(name):
         client_data_row[0].shutdown(socket.SHUT_RDWR)
         client_data_row[0].close()
 
+
+# Assign the signal handler to the interrupt signal
+signal.signal(signal.SIGINT, signal_handler)
 
 # Start the server
 print('server running...')
