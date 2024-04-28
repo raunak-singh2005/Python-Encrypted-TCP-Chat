@@ -102,6 +102,10 @@ class Client:
             self.sendButton.config(font=('Arial', 12))
             self.sendButton.pack(padx=20, pady=5)
 
+            self.leaveButton = tkinter.Button(self.win, text='Leave', command=self.leave)
+            self.leaveButton.config(font=('Arial', 12))
+            self.leaveButton.pack(padx=20, pady=5)
+
             self.guiDone = True
 
             self.win.protocol('WM_DELETE_WINDOW', self.stop)
@@ -155,6 +159,14 @@ class Client:
         except Exception as e:
             print(f'Error in stopping the client: {e}')
             exit(0)
+
+    def leave(self):
+        try:
+            self.sock.send(rsa.encrypt(f'LEAVE {self.nickname}'.encode('utf-8'), self.serverPubkey))
+            self.stop()
+        except Exception as e:
+            print(f'Error in leaving the chat: {e}')
+            self.stop()
 
     # Function to receive and decrypt messages from the server
     def receive(self):

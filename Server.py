@@ -133,6 +133,15 @@ def handle(client):
                         f.write(f'{nameToBan}\n')
                     print(f'{nameToBan} was banned')
 
+            elif msg.startswith('LEAVE'):
+                nameToLeave = msg[6:]
+                clientDataRow = next((row for row in clients_data if row[1] == nameToLeave), None)
+                if clientDataRow:
+                    clients_data.remove(clientDataRow)
+                    clientDataRow[0].shutdown(socket.SHUT_RDWR)
+                    clientDataRow[0].close()
+                    broadcast(f'{nameToLeave} has left the chat!')
+
             else:
                 broadcast(decMessage)
 
