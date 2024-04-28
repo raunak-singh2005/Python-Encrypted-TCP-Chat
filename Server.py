@@ -10,16 +10,16 @@ import signal
 
 # Function to get the network information from the user
 def getNetworkInfo():
-    while True:
-        HOST = input('Please Enter the Server IP Address: ')
-        PORT = input('Please Enter the Server Port: ')
-        if not re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', HOST):
-            print("Invalid IP address format. Please try again.")
-            continue
-        if not PORT.isdigit() or not 0 <= int(PORT) <= 65535:
-            print("Invalid port number. Please try again.")
-            continue
-        return HOST, int(PORT)
+
+    HOST = input('Please Enter the Server IP Address: ')
+    PORT = input('Please Enter the Server Port: ')
+    if not re.match(r'^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$', HOST):
+        print("Invalid IP address format. Please try again.")
+        return getNetworkInfo()
+    if not PORT.isdigit() or not 0 <= int(PORT) <= 65535:
+        print("Invalid port number. Please try again.")
+        return getNetworkInfo()
+    return HOST, int(PORT)
 
 
 # Assign the network information to the HOST and PORT variables
