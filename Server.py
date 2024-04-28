@@ -123,7 +123,7 @@ def handle(client):
                     continue
 
                 if msg.startswith('KICK'):
-                    nameToKick = msg[5:]  #
+                    nameToKick = msg[5:]
                     kickUser(nameToKick)
 
                 elif msg.startswith('BAN'):

@@ -142,7 +142,10 @@ class Client:
                         self.sock.send(rsa.encrypt(message.encode('utf-8'), self.serverPubkey))
                         self.inputArea.delete('0.1', 'end')
                 else:
-                    print('Not ADMIN')
+                    self.textArea.config(state='normal')
+                    self.textArea.insert('end', f'you are not authorized to use this command\n')
+                    self.textArea.yview('end')
+                    self.textArea.config(state='disabled')
             else:
                 self.sock.send(rsa.encrypt(message.encode('utf-8'), self.serverPubkey))
                 self.inputArea.delete('0.1', 'end')
