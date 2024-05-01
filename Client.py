@@ -115,7 +115,7 @@ class Client:
             self.inputArea.pack(padx=20, pady=5)
 
             # Create the send and leave buttons
-            self.sendButton = tkinter.Button(self.win, text='send', command=self.write)
+            self.sendButton = tkinter.Button(self.win, text='Send', command=self.write)
             self.sendButton.config(font=('Arial', 12))
             self.sendButton.pack(padx=20, pady=5)
 
@@ -138,7 +138,7 @@ class Client:
 
         except Exception as e:
             print(f'Error in creating the GUI: {e}')
-            self.stop()
+            self.leave()
 
     # Function to send the message to the server
     def write(self):
@@ -181,7 +181,7 @@ class Client:
                 self.inputArea.delete('0.1', 'end')
         except Exception as e:
             print(f'Error in sending the message: {e}')
-            self.stop()
+            self.leave()
 
     # Function to stop the client
     def stop(self):
@@ -236,15 +236,16 @@ class Client:
                 break
             except:
                 print('error')
-                self.sock.close()
+                self.leave()
                 break
 
 # Function to handle the interrupt signal
 def signal_handler(sig, frame):
     print("Shutting down client...")
-    client.stop()
+    client.leave()
     sys.exit(0)
 
+signal.signal(signal.SIGINT, signal_handler)
 
 # Create a client object
 if HOST and PORT:
@@ -253,4 +254,3 @@ else:
     print('Error in getting the network information')
     exit(0)
 
-signal.signal(signal.SIGINT, signal_handler)
